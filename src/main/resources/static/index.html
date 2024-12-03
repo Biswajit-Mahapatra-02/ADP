@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Music Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+</head>
+<body>
+<h1>Collaborative Music Platform</h1>
+
+<!-- Audio Upload Form -->
+<h2>Upload Audio</h2>
+<form id="uploadForm">
+    <input type="file" id="fileInput" />
+    <button type="submit">Upload</button>
+</form>
+
+<!-- List Uploaded Files -->
+<h2>Uploaded Files</h2>
+<ul id="fileList"></ul>
+
+<!-- Real-Time Activity -->
+<h2>Real-Time Collaboration</h2>
+<div id="activityFeed"></div>
+
+<script>
+    // Fetch and display uploaded files
+    async function fetchFiles() {
+        const response = await fetch('/api/audio');
+        const files = await response.json();
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = files.map(file => `<li>${file.fileName}</li>`).join('');
+    }
+
+    // Handle file upload
+    document.getElementById('uploadForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const fileInput = document.getElementById('fileInput');
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        await fetch('/api/audio/upload', { method: 'POST', body: formData });
+        fetchFiles();
+    });
+
+    // Fetch files on load
+    fetchFiles();
+
+    // Real-time WebSocket for activity feed
+    const socket = new SockJS('/ws');
+    const stompClient = Stomp.over(socket);
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/activity', (message) => {
+            const activityFeed = document.getElementById('activityFeed');
+            activityFeed.innerHTML += `<p>${message.body}</p>`;
+        });
+    });
+</script>
+</body>
+</html>
